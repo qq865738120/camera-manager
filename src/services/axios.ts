@@ -37,7 +37,8 @@ axiosInstance.interceptors.request.use(
  */
 axiosInstance.interceptors.response.use(
   (response: AxiosResponse) => {
-    if (response.data.code === 200) {
+    // 0表示成功，其它表示失败
+    if (response.data.code === 0) {
       return response;
     }
     // 针对请求成功：返回的 code 码做不同的响应

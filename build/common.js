@@ -100,11 +100,25 @@ const getStyleLoaders = (options) => {
         {
             test: styleRegex.lessRegex,
             exclude: [styleRegex.lessModuleRegex],
-            use: getBaseStyleLoaders(null, 'less-loader'),
+            use: getBaseStyleLoaders(null, {
+                loader: 'less-loader',
+                options: {
+                    lessOptions: {
+                        javascriptEnabled: true,
+                    }
+                }
+            }),
         },
         {
             test: styleRegex.lessModuleRegex,
-            use: getBaseStyleLoaders({cssModule: options.cssModule}, 'less-loader'),
+            use: getBaseStyleLoaders({cssModule: options.cssModule}, {
+                loader: 'less-loader',
+                options: {
+                    lessOptions: {
+                        javascriptEnabled: true,
+                    }
+                }
+            }),
         },
         {
             test: styleRegex.sassRegex,

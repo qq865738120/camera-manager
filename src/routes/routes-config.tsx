@@ -11,6 +11,7 @@ import React from 'react';
  */
 
 import App from '@src/entry/App';
+import Home from '@src/views/home/Home';
 
 export interface RouteConfigDeclaration {
   /**
@@ -60,7 +61,7 @@ export const routesConfig: RouteConfigDeclaration[] = [
       {
         path: '/home',
         // exact: true,
-        isDynamic: true,
+        // isDynamic: true,
         // loadingFallback: '不一样的 loading 内容...',
         // component: Home,
         // component: React.lazy(
@@ -75,9 +76,7 @@ export const routesConfig: RouteConfigDeclaration[] = [
         //             ),
         //         ),
         // ),
-        component: React.lazy(() =>
-          import(/* webpackChunkName: "home"*/ '@src/views/home/Home'),
-        ),
+        component: Home,
       },
     ],
   },
