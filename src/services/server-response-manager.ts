@@ -21,9 +21,12 @@ class ServerResponseSuccessManager {
       '10010': () => {
         this.handleCodeIs10010(resData);
       },
-      default: () => console.log('code 无法识别'),
+      default: () => {
+        message.info(response.data.errorDesc);
+        throw new Error(response.data);
+      },
     };
-    return parser[code] ? parser[code]() : parser['default'];
+    return parser[code] ? parser[code]() : parser['default']();
   }
 
   /**

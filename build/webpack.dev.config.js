@@ -51,6 +51,12 @@ module.exports = merge(baseConfig, {
             errors: true,
             warnings: true,
         },
+        proxy: {
+            '/api': {
+                target: 'http://106.12.124.172:8123',
+                pathRewrite: {'^/api' : ''}
+            }
+        }
         // open: true,
         // openPage:'dist/index.html',
     }

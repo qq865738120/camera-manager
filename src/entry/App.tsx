@@ -19,6 +19,8 @@ class App extends React.PureComponent<AppProps> {
 
   render() {
     const routes = renderAllRoutes(this.props.routes);
+    console.log('routes', routes);
+
     return (
       <GlobalContext.Provider value={this.globalContext}>
         <Switch>{routes}</Switch>

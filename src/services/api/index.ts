@@ -4,8 +4,10 @@
  * @date：2020/3/19
  */
 import * as user from './user';
+import * as home from './home';
 
 // api 中的 key 以单个模块命名，防止接口重名
 export const api = {
   user,
+  home,
 };

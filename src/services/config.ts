@@ -7,14 +7,14 @@ let str: string;
 switch (process.env.NODE_ENV) {
   // 开发环境接口配置
   case 'development':
-    str = '/server'; // 可以替换成 http://xxx:6666/server
+    str = 'http://192.168.3.2:666/api'; // 可以替换成 http://xxx:6666/server
     break;
   // 生产环境接口配置
   case 'production':
-    str = '/server'; // 可以替换成 http://xxx:8888/server
+    str = 'http://106.12.124.172:8123/api'; // 可以替换成 http://xxx:8888/server
     break;
   default:
-    str = '/server';
+    str = 'http://106.12.124.172:8123/api';
     break;
 }
 export const host = str;

@@ -8,20 +8,30 @@ import {
   Dropdown,
   Empty,
   Menu,
+  message,
+  Modal,
   Row,
   Space,
   Statistic,
   Timeline,
 } from 'antd';
-import { PlusOutlined, FieldTimeOutlined } from '@ant-design/icons';
+import {
+  PlusOutlined,
+  FieldTimeOutlined,
+  PoweroffOutlined,
+} from '@ant-design/icons';
 import React from 'react';
 import styles from './home.module.less';
-// import { renderAllRoutes } from '@routes/route-loader';
 import { RouteComponentProps } from 'react-router-dom';
 import { BoxEditorDrawer } from './components/box-editor-drawer';
 import { CameraEditorDrawer } from './components/camera-editor-drawer';
 import { ShootEditorDrawer } from './components/shoot-editor-drawer';
 import downloadFile from '@src/utils/download-file';
+import { api } from '@src/services/api';
+import Login from './components/login-dialog';
+import app from '@src/config/app';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const SparkMD5 = require('spark-md5');
 
 function mapStateToProps(state) {
   return state;
@@ -59,6 +69,8 @@ type HomeStatus = {
   shootList: any[];
   currentBox: any;
   currentCamera: any;
+  isModalVisible: boolean;
+  isLogin: boolean;
 };
 
 export default class Home extends React.Component<HomeProps, HomeStatus> {
@@ -72,79 +84,36 @@ export default class Home extends React.Component<HomeProps, HomeStatus> {
       cameraActionText: '新增',
       cameraDrawerVisible: false,
       shootDrawerVisible: false,
-      boxList: [
-        {
-          ip: '127.0.0.1',
-          name: '一号盒子',
-          status: 'online',
-          cams: [
-            {
-              ip: '192.168.1.1',
-              name: '一号相机',
-              status: 'connected',
-            },
-            {
-              ip: '192.168.1.2',
-              name: '二号相机',
-              status: 'online',
-            },
-          ],
-        },
-        {
-          ip: '127.0.0.2',
-          name: '二号号盒子',
-          status: 'offline',
-          cams: [
-            {
-              ip: '192.168.1.3',
-              name: '三号相机',
-              status: 'offline',
-            },
-          ],
-        },
-      ],
-      shootList: [
-        {
-          name: '一号相机',
-          ip: '192.168.1.1',
-          shootSlice: [
-            {
-              time: 1, // 时长
-              type: 'wait', // 操作类型
-            },
-            {
-              time: 2,
-              type: 'shoot',
-            },
-            {
-              time: 2,
-              type: 'shoot',
-            },
-          ],
-        },
-        {
-          name: '二号相机',
-          ip: '192.168.1.2',
-          shootSlice: [
-            {
-              time: 13, // 时长
-              type: 'wait', // 操作类型
-            },
-            {
-              time: 22,
-              type: 'shoot',
-            },
-            {
-              time: 11,
-              type: 'shoot',
-            },
-          ],
-        },
-      ],
+      boxList: null,
+      shootList: null,
       currentBox: {},
       currentCamera: {},
+      isModalVisible: false,
+      isLogin: false,
     };
   }
+
+  async componentDidMount() {
+    const token = SparkMD5.hash(`${app.login.username}${app.login.password}`);
+    if (token !== localStorage.getItem('token')) {
+      this.setState({ isModalVisible: true, isLogin: false });
+    } else {
+      this.setState({ isLogin: true });
+    }
+
+    this.init();
+  }
+
+  init = async () => {
+    const [boxRes, shootRes] = await Promise.all([
+      api.home.getBoxCameraList(),
+      api.home.getProcessList(),
+    ]);
+    this.setState({
+      boxList: boxRes.data.boxList,
+      shootList: shootRes.data,
+    });
+  };
 
   genExtra = boxItem => (
     <Dropdown.Button
@@ -182,11 +151,25 @@ export default class Home extends React.Component<HomeProps, HomeStatus> {
     this.setState({ boxAction: e.key, boxActionText: text });
   };
 
-  handleBoxActionClick = boxItem => {
+  handleBoxActionClick = async boxItem => {
     console.log(boxItem);
     const { boxAction } = this.state;
     if (boxAction === 'add' || boxAction === 'update') {
       this.setState({ boxDrawerVisible: true, currentBox: boxItem });
+    } else {
+      Modal.info({
+        content: '确定要删除魔盒吗？',
+        okText: '确定',
+        onOk: async () => {
+          try {
+            await api.home.postBoxDelete({ ip: boxItem.ip });
+            message.success('操作成功');
+            this.init();
+          } catch (error) {
+            console.log(error);
+          }
+        },
+      });
     }
   };
 
@@ -235,6 +218,20 @@ export default class Home extends React.Component<HomeProps, HomeStatus> {
         currentBox: boxItem,
         currentCamera: cameraItem,
       });
+    } else {
+      Modal.info({
+        content: '确定要删除相机吗？',
+        okText: '确定',
+        onOk: async () => {
+          try {
+            await api.home.postCameraDelete({ ip: cameraItem.ip });
+            message.success('操作成功');
+            this.init();
+          } catch (error) {
+            console.log(error);
+          }
+        },
+      });
     }
   };
 
@@ -266,7 +263,7 @@ export default class Home extends React.Component<HomeProps, HomeStatus> {
 
     const cameraList = [];
     boxList.map(item => {
-      item.cams.map(it => {
+      (item.cams || []).map(it => {
         cameraList.push({
           name: it.name,
           ip: it.ip,
@@ -282,6 +279,15 @@ export default class Home extends React.Component<HomeProps, HomeStatus> {
     downloadFile(this.state.shootList);
   };
 
+  onActionStartClick = async () => {
+    try {
+      await api.home.actionShoot();
+      message.success('操作成功');
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   render() {
     const {
       boxDrawerVisible,
@@ -290,16 +296,29 @@ export default class Home extends React.Component<HomeProps, HomeStatus> {
       currentBox,
       currentCamera,
       boxAction,
+      cameraAction,
       cameraDrawerVisible,
       shootDrawerVisible,
+      isModalVisible,
+      isLogin,
     } = this.state;
+
+    if (!isLogin) {
+      return (
+        <Login
+          isModalVisible={isModalVisible}
+          onClose={() => this.setState({ isModalVisible: false })}
+          setLogin={() => this.setState({ isLogin: true })}
+        />
+      );
+    }
 
     return (
       <section className={styles.container}>
         <Row justify="center">
           <Col span={14}>
             <Divider orientation="left">魔盒</Divider>
-            {boxList.length > 0 ? (
+            {(boxList || []).length > 0 ? (
               <Collapse
                 collapsible="header"
                 defaultActiveKey={[boxList[0]?.ip]}
@@ -310,7 +329,7 @@ export default class Home extends React.Component<HomeProps, HomeStatus> {
                       <Space size="large">
                         <span>名称：{boxItem.name}</span>
                         <span>IP地址：{boxItem.ip}</span>
-                        <span>相机数量：{boxItem.cams.length}</span>
+                        <span>相机数量：{(boxItem.cams || []).length}</span>
                         <span>
                           状态：
                           <Badge
@@ -323,8 +342,8 @@ export default class Home extends React.Component<HomeProps, HomeStatus> {
                     key={boxItem.ip}
                     extra={this.genExtra(boxItem)}
                   >
-                    {boxItem?.cams?.length > 0 ? (
-                      boxItem?.cams.map(cameraItem => (
+                    {(boxItem?.cams || []).length > 0 ? (
+                      (boxItem?.cams || []).map(cameraItem => (
                         <Descriptions
                           key={cameraItem.ip}
                           title={cameraItem.name}
@@ -346,11 +365,13 @@ export default class Home extends React.Component<HomeProps, HomeStatus> {
                         <Button
                           type="primary"
                           icon={<PlusOutlined />}
-                          onClick={this.handleCameraActionClick.bind(
-                            this,
-                            boxItem,
-                            null,
-                          )}
+                          onClick={() => {
+                            this.setState({
+                              cameraDrawerVisible: true,
+                              currentBox: boxItem,
+                              currentCamera: null,
+                            });
+                          }}
                         >
                           立即添加相机
                         </Button>
@@ -364,7 +385,9 @@ export default class Home extends React.Component<HomeProps, HomeStatus> {
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
-                  onClick={this.handleBoxActionClick.bind(this, null)}
+                  onClick={() => {
+                    this.setState({ boxDrawerVisible: true, currentBox: null });
+                  }}
                 >
                   立即添加魔盒
                 </Button>
@@ -374,12 +397,12 @@ export default class Home extends React.Component<HomeProps, HomeStatus> {
             <Divider orientation="left" style={{ marginTop: 50 }}>
               拍摄流
             </Divider>
-            {shootList.length > 0 ? (
+            {(shootList?.cams || []).length > 0 ? (
               <Collapse
                 collapsible="header"
-                defaultActiveKey={[shootList[0]?.ip]}
+                defaultActiveKey={[shootList?.cams[0]?.ip]}
               >
-                {shootList.map(shootItem => (
+                {(shootList?.cams || []).map(shootItem => (
                   <Collapse.Panel
                     header={
                       <Space size="large">
@@ -410,7 +433,7 @@ export default class Home extends React.Component<HomeProps, HomeStatus> {
                     }
                   >
                     <Timeline>
-                      {shootItem?.shootSlice.map(sliceItem => (
+                      {(shootItem?.shootSlice || []).map(sliceItem => (
                         <Timeline.Item
                           key={Math.random()}
                           color={sliceItem.type === 'wait' ? 'red' : 'green'}
@@ -436,12 +459,22 @@ export default class Home extends React.Component<HomeProps, HomeStatus> {
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
-                  onClick={this.handleBoxActionClick.bind(this, null)}
+                  onClick={() => this.setState({ shootDrawerVisible: true })}
                 >
                   立即添加拍摄流
                 </Button>
               </Empty>
             )}
+            <Button
+              type="primary"
+              onClick={this.onActionStartClick}
+              block
+              size="large"
+              icon={<PoweroffOutlined></PoweroffOutlined>}
+              style={{ marginTop: 60 }}
+            >
+              开始拍摄
+            </Button>
           </Col>
         </Row>
 
@@ -450,6 +483,7 @@ export default class Home extends React.Component<HomeProps, HomeStatus> {
           item={currentBox}
           action={boxAction}
           onClose={() => this.setState({ boxDrawerVisible: false })}
+          onFinish={this.init}
         />
 
         <CameraEditorDrawer
@@ -457,8 +491,9 @@ export default class Home extends React.Component<HomeProps, HomeStatus> {
           item={currentCamera}
           boxItem={currentBox}
           list={boxList}
-          action={boxAction}
+          action={cameraAction}
           onClose={() => this.setState({ cameraDrawerVisible: false })}
+          onFinish={this.init}
         />
 
         <ShootEditorDrawer
@@ -466,6 +501,7 @@ export default class Home extends React.Component<HomeProps, HomeStatus> {
           list={shootList}
           cameraList={this.getCameraList()}
           onClose={() => this.setState({ shootDrawerVisible: false })}
+          onFinish={this.init}
         />
       </section>
     );

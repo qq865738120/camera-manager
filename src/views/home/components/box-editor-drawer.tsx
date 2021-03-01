@@ -1,11 +1,13 @@
 import React from 'react';
-import { Button, Drawer, Form, FormInstance, Input, Row } from 'antd';
+import { Button, Drawer, Form, FormInstance, Input, message, Row } from 'antd';
+import { api } from '@src/services/api';
 
 type BoxEditorDrawerProps = {
   visible: boolean;
   item: any;
   action: 'add' | 'delete' | 'update';
   onClose: () => any;
+  onFinish: () => any;
 };
 
 export class BoxEditorDrawer extends React.Component<BoxEditorDrawerProps, {}> {
@@ -29,9 +31,20 @@ export class BoxEditorDrawer extends React.Component<BoxEditorDrawerProps, {}> {
   }
 
   onFinish = async () => {
-    const { onClose } = this.props;
+    const { onClose, action } = this.props;
     console.log('finish');
     const value = this.formRef.current.getFieldsValue();
+    try {
+      if (action === 'add') {
+        await api.home.postBoxAdd(value);
+      } else {
+        await api.home.postBoxUpdate(value);
+      }
+      message.success('操作成功');
+      this.props.onFinish();
+    } catch (error) {
+      console.log(error);
+    }
     console.log(value);
     onClose();
   };
@@ -90,7 +103,7 @@ export class BoxEditorDrawer extends React.Component<BoxEditorDrawerProps, {}> {
               },
             ]}
           >
-            <Input placeholder="请输入IP地址" />
+            <Input disabled={action === 'update'} placeholder="请输入IP地址" />
           </Form.Item>
         </Form>
       </Drawer>

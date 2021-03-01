@@ -39,7 +39,7 @@ axiosInstance.interceptors.response.use(
   (response: AxiosResponse) => {
     // 0表示成功，其它表示失败
     if (response.data.code === 0) {
-      return response;
+      return response.data;
     }
     // 针对请求成功：返回的 code 码做不同的响应
     serverResponseSuccessManager.codeParser(response);

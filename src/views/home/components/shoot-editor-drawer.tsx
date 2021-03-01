@@ -5,6 +5,8 @@ import {
   Drawer,
   Form,
   FormInstance,
+  InputNumber,
+  message,
   Select,
   Space,
   Upload,
@@ -15,6 +17,7 @@ import {
   UploadOutlined,
 } from '@ant-design/icons';
 import { ShootActionForm } from './shoot-action-form';
+import { api } from '@src/services/api';
 
 type ShootEditorDrawerProps = {
   visible: boolean;
@@ -24,13 +27,11 @@ type ShootEditorDrawerProps = {
     ip: string;
   }[];
   onClose: () => any;
+  onFinish: () => any;
 };
 
 type ShootEditorDrawerStatus = {
-  // cameraList: {
-  //   name: string;
-  //   ip: string;
-  // }[];
+  submitLoading: boolean;
 };
 
 export class ShootEditorDrawer extends React.Component<
@@ -39,28 +40,63 @@ export class ShootEditorDrawer extends React.Component<
 > {
   constructor(props) {
     super(props);
+    this.state = {
+      submitLoading: false,
+    };
   }
 
   formRef = React.createRef() as React.RefObject<FormInstance<any>>;
 
   componentDidUpdate() {
-    // const { boxList } = this.props;
-    // if (!this.formRef.current) {
-    //   return;
-    // }
-    // this.formRef.current.setFieldsValue({
-    //   name: item.name,
-    //   ip: item.ip,
-    //   boxIP: boxItem.ip,
-    // });
+    const { list } = this.props;
+    if (!this.formRef.current) {
+      return;
+    }
+    this.formRef.current.setFieldsValue({
+      ...list,
+      repateTime: list.repateTime ? parseInt(list.repateTime) : null,
+    });
   }
 
   onFinish = async () => {
-    const { onClose } = this.props;
+    const { onClose, onFinish } = this.props;
     console.log('finish');
     const value = this.formRef.current.getFieldsValue();
-    console.log(value);
-    onClose();
+    const params = {
+      cams: value.cams.map(item => {
+        let name = '-';
+        this.props.cameraList.map(it => {
+          if (it.ip === item.ip) {
+            name = it.name;
+          }
+        });
+        const shootSlice = [];
+        (item.shootSlice || []).map(i => {
+          shootSlice.push({
+            ...i,
+            time: i.time + '',
+          });
+        });
+        return {
+          ...item,
+          name,
+          shootSlice,
+        };
+      }),
+      repateTime: value.repateTime + '',
+    };
+    console.log(params);
+    this.setState({ submitLoading: true });
+    try {
+      await api.home.postProcessAdd(params);
+      message.success('操作成功');
+      onFinish();
+      onClose();
+    } catch (error) {
+      console.log(error);
+    } finally {
+      this.setState({ submitLoading: false });
+    }
   };
 
   beforeUpload = file => {
@@ -70,21 +106,22 @@ export class ShootEditorDrawer extends React.Component<
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onloadend = function() {
-      that.formRef.current.setFieldsValue({
-        cams: JSON.parse(
+      that.formRef.current.setFieldsValue(
+        JSON.parse(
           decodeURIComponent(atob((this.result as string).split(',')[1])),
         ),
-      });
+      );
     };
     return true;
   };
 
   render() {
     const { visible, onClose, cameraList } = this.props;
+    const { submitLoading } = this.state;
 
     return (
       <Drawer
-        title="修改拍摄流"
+        title="新增/修改拍摄流"
         width={500}
         onClose={onClose}
         visible={visible}
@@ -102,6 +139,7 @@ export class ShootEditorDrawer extends React.Component<
               onClick={() => this.formRef.current.submit()}
               type="primary"
               htmlType="submit"
+              loading={submitLoading}
             >
               提交
             </Button>
@@ -176,6 +214,14 @@ export class ShootEditorDrawer extends React.Component<
               </>
             )}
           </Form.List>
+
+          <Form.Item
+            name="repateTime"
+            label="重拍等待时长"
+            rules={[{ required: true, message: '请输入重拍等待时长' }]}
+          >
+            <InputNumber min={0} precision={0} />
+          </Form.Item>
 
           <Form.Item label="导入配置">
             <Upload beforeUpload={this.beforeUpload} showUploadList={false}>

@@ -1,5 +1,14 @@
 import React from 'react';
-import { Button, Drawer, Form, FormInstance, Input, Select } from 'antd';
+import {
+  Button,
+  Drawer,
+  Form,
+  FormInstance,
+  Input,
+  message,
+  Select,
+} from 'antd';
+import { api } from '@src/services/api';
 
 type CameraEditorDrawerProps = {
   visible: boolean;
@@ -8,6 +17,7 @@ type CameraEditorDrawerProps = {
   list: any;
   action: 'add' | 'delete' | 'update';
   onClose: () => any;
+  onFinish: () => any;
 };
 
 export class CameraEditorDrawer extends React.Component<
@@ -42,9 +52,20 @@ export class CameraEditorDrawer extends React.Component<
   }
 
   onFinish = async () => {
-    const { onClose } = this.props;
+    const { onClose, action } = this.props;
     console.log('finish');
     const value = this.formRef.current.getFieldsValue();
+    try {
+      if (action === 'add') {
+        await api.home.postCameraAdd(value);
+      } else {
+        await api.home.postCameraUpdate(value);
+      }
+      message.success('操作成功');
+      this.props.onFinish();
+    } catch (error) {
+      console.log(error);
+    }
     console.log(value);
     onClose();
   };
@@ -103,7 +124,7 @@ export class CameraEditorDrawer extends React.Component<
               },
             ]}
           >
-            <Input placeholder="请输入IP地址" />
+            <Input disabled={action === 'update'} placeholder="请输入IP地址" />
           </Form.Item>
           <Form.Item
             name="boxIP"

@@ -60,6 +60,8 @@ export const routesConfig: RouteConfigDeclaration[] = [
     routes: [
       {
         path: '/home',
+        // isProtected: true,
+        // isRedirect: true,
         // exact: true,
         // isDynamic: true,
         // loadingFallback: '不一样的 loading 内容...',

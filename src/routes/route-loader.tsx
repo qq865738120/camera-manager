@@ -7,6 +7,9 @@
 import React from 'react';
 import { Route, Redirect } from 'react-router-dom';
 import { RouteConfigDeclaration } from '@routes/routes-config';
+import app from '@src/config/app';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const SparkMD5 = require('spark-md5');
 
 /**
  * 渲染普通路由
@@ -48,7 +51,10 @@ export function renderRoutes(
         path={path}
         exact={exact}
         component={props => {
-          if (isProtected && !localStorage.getItem('token')) {
+          const token = SparkMD5.hash(
+            `${app.login.username}${app.login.password}`,
+          );
+          if (isProtected && token !== localStorage.getItem('token')) {
             return <Redirect key={'login-redirect'} to={'/login'} />;
           }
           if (isDynamic) {
